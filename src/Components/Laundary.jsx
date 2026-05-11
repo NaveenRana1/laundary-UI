@@ -56,7 +56,7 @@ function Toast({ message, type, onClose }) {
   const colors = {
     error:   "bg-red-50 border-red-200 text-red-700",
     success: "bg-green-50 border-green-200 text-green-700",
-    info:    "bg-sky-50 border-sky-200 text-sky-700",
+    info:    "bg-sky-50 border-sky-200 text-sky-800",
   };
   const icons = { error: "❌", success: "✅", info: "ℹ️" };
   return (
