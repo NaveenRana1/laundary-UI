@@ -27,7 +27,7 @@ const fontStyle = `
 `;
 
 // ── CONFIG: change this to your backend URL ──
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://laundary-beckend.onrender.com";
 
 const SERVICES = [
   { icon: "🧺", title: "Wash & Fold",   desc: "Fresh, fluffy laundry folded and ready. Per-kg pricing, same-day available.", price: "₹60/kg",    color: "from-sky-400 to-blue-500"     },
