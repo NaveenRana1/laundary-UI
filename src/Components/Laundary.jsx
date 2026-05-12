@@ -7,7 +7,6 @@ const fontStyle = `
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
   @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes pulse-ring { 0%{transform:scale(1);opacity:0.4} 100%{transform:scale(1.5);opacity:0} }
   @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
   @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   .float { animation: float 4s ease-in-out infinite; }
@@ -26,16 +25,19 @@ const fontStyle = `
   }
 `;
 
-// ── CONFIG: change this to your backend URL ──
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+// NOTE: The URL below is your deployed Render backend (kept exactly as-is).
+// If you ever get "Cannot reach server" errors, double-check this matches
+// the service name in your Render dashboard.
 const API_BASE_URL = "https://laundary-beckend.onrender.com";
 
 const SERVICES = [
-  { icon: "🧺", title: "Wash & Fold",   desc: "Fresh, fluffy laundry folded and ready. Per-kg pricing, same-day available.", price: "₹60/kg",    color: "from-sky-400 to-blue-500"     },
-  { icon: "👔", title: "Dry Cleaning",  desc: "Expert care for delicates, suits, and silks. Stain treatment included.",      price: "₹150/pc",   color: "from-violet-400 to-purple-600" },
-  { icon: "🔥", title: "Steam Ironing", desc: "Crisp, wrinkle-free clothes pressed to perfection.",                          price: "₹15/pc",    color: "from-orange-400 to-red-500"    },
-  { icon: "👟", title: "Shoe Cleaning", desc: "Deep clean and whitening for all types of footwear.",                         price: "₹200/pair", color: "from-emerald-400 to-teal-600"  },
-  { icon: "🛏️", title: "Bedding & Linen", desc: "Duvets, comforters, curtains — large items handled with care.",            price: "₹200/pc",   color: "from-pink-400 to-rose-500"     },
-  { icon: "🧥", title: "Premium Care",  desc: "Luxury fabrics, bridal wear, leather jackets — white-glove treatment.",      price: "Custom",    color: "from-yellow-400 to-amber-500"  },
+  { icon: "🧺", title: "Wash & Fold",     desc: "Fresh, fluffy laundry folded and ready. Per-kg pricing, same-day available.", price: "₹60/kg",    unit: "kg",   color: "from-sky-400 to-blue-500"      },
+  { icon: "👔", title: "Dry Cleaning",    desc: "Expert care for delicates, suits, and silks. Stain treatment included.",      price: "₹150/pc",  unit: "pcs",  color: "from-violet-400 to-purple-600" },
+  { icon: "🔥", title: "Steam Ironing",   desc: "Crisp, wrinkle-free clothes pressed to perfection.",                          price: "₹15/pc",   unit: "pcs",  color: "from-orange-400 to-red-500"    },
+  { icon: "👟", title: "Shoe Cleaning",   desc: "Deep clean and whitening for all types of footwear.",                         price: "₹200/pair",unit: "pairs",color: "from-emerald-400 to-teal-600"  },
+  { icon: "🛏️", title: "Bedding & Linen", desc: "Duvets, comforters, curtains — large items handled with care.",              price: "₹200/pc",  unit: "pcs",  color: "from-pink-400 to-rose-500"     },
+  { icon: "🧥", title: "Premium Care",    desc: "Luxury fabrics, bridal wear, leather jackets — white-glove treatment.",      price: "Custom",   unit: "pcs",  color: "from-yellow-400 to-amber-500"  },
 ];
 
 const STEPS = [
@@ -46,12 +48,15 @@ const STEPS = [
 ];
 
 const PLANS = [
-  { plan: "Basic",    price: "₹299", desc: "Up to 5kg laundry. Wash & fold. 48hr delivery.",                              highlight: false },
-  { plan: "Standard", price: "₹549", desc: "Up to 10kg. Wash, fold & iron. 24hr delivery. Free pickup.",                  highlight: true  },
-  { plan: "Premium",  price: "₹999", desc: "Unlimited pieces. All services. Same-day express. Priority support.",         highlight: false },
+  { plan: "Basic",    price: "₹299", desc: "Up to 5kg laundry. Wash & fold. 48hr delivery.",                             highlight: false },
+  { plan: "Standard", price: "₹549", desc: "Up to 10kg. Wash, fold & iron. 24hr delivery. Free pickup.",                 highlight: true  },
+  { plan: "Premium",  price: "₹999", desc: "Unlimited pieces. All services. Same-day express. Priority support.",        highlight: false },
 ];
 
-// ── Toast component ──
+// ── Helper: get unit label for selected service ───────────────────────────
+const getUnit = (serviceTitle) => SERVICES.find(s => s.title === serviceTitle)?.unit || "pcs";
+
+// ── Toast ─────────────────────────────────────────────────────────────────
 function Toast({ message, type, onClose }) {
   const colors = {
     error:   "bg-red-50 border-red-200 text-red-700",
@@ -68,13 +73,13 @@ function Toast({ message, type, onClose }) {
   );
 }
 
-// ── Logout helper ──
+// ── Logout ────────────────────────────────────────────────────────────────
 const logout = () => {
   localStorage.removeItem("token");
   window.location.href = "/";
 };
 
-// ── Spinner ──
+// ── Spinner ───────────────────────────────────────────────────────────────
 function Spinner() {
   return (
     <svg className="spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -84,79 +89,107 @@ function Spinner() {
   );
 }
 
+// ── Backend health check ──────────────────────────────────────────────────
+async function checkBackend() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/`, { method: "GET", signal: AbortSignal.timeout(5000) });
+    return res.ok || res.status < 500;
+  } catch {
+    return false;
+  }
+}
+
 export default function Laundary() {
-  const [activeNav,  setActiveNav]  = useState("home");
-  const [menuOpen,   setMenuOpen]   = useState(false);
-  const [submitted,  setSubmitted]  = useState(false);
-  const [loading,    setLoading]    = useState(false);
-  const [toast,      setToast]      = useState(null); // { message, type }
+  const [activeNav,     setActiveNav]     = useState("home");
+  const [menuOpen,      setMenuOpen]      = useState(false);
+  const [submitted,     setSubmitted]     = useState(false);
+  const [loading,       setLoading]       = useState(false);
+  const [backendStatus, setBackendStatus] = useState(null); // null | "ok" | "down"
+  const [toast,         setToast]         = useState(null);
+
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    service: "",
+    name:     "",
+    email:    "",
+    phone:    "",
+    address:  "",
+    service:  "",
     quantity: "",
-    date: "",
-    notes: "",
+    date:     "",
+    notes:    "",
   });
 
-  // ── Show toast helper ──
+  // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = (message, type = "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
   };
 
-  // ── Field updater ──
   const setField = (key, value) => setForm(f => ({ ...f, [key]: value }));
 
-  // ── Basic email validation ──
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  // ── Form validation ──
-  const isFormValid = form.name.trim() && form.email.trim() && form.phone.trim() && form.service;
+  const isFormValid =
+    form.name.trim() &&
+    form.email.trim() &&
+    form.phone.trim() &&
+    form.service &&
+    form.quantity;
 
-  // ── Submit handler ──
+  // ── Backend URL checker ───────────────────────────────────────────────────
+  const handleCheckBackend = async () => {
+    setBackendStatus(null);
+    showToast("Checking backend connection…", "info");
+    const ok = await checkBackend();
+    setBackendStatus(ok ? "ok" : "down");
+    showToast(
+      ok
+        ? `✅ Backend is reachable at ${API_BASE_URL}`
+        : `❌ Cannot reach backend at ${API_BASE_URL}. Check your Render service.`,
+      ok ? "success" : "error"
+    );
+  };
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleOrder = async () => {
     if (!isFormValid) {
-      showToast("Please fill in Name, Email, Phone, and Service Type.", "error");
+      showToast("Please fill in Name, Email, Phone, Service, and Quantity.", "error");
       return;
     }
-
     if (!isValidEmail(form.email)) {
       showToast("Please enter a valid email address.", "error");
       return;
     }
-
     const phoneDigits = form.phone.replace(/\D/g, "");
     if (phoneDigits.length < 10) {
       showToast("Please enter a valid 10-digit phone number.", "error");
       return;
     }
+    const qty = Number(form.quantity);
+    if (!qty || qty <= 0) {
+      showToast("Please enter a valid quantity (greater than 0).", "error");
+      return;
+    }
 
     setLoading(true);
-
     try {
       const response = await fetch(`${API_BASE_URL}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name:    form.name.trim(),
-          email:   form.email.trim(),
-          phone:   form.phone.trim(),
-          address: form.address.trim(),
-          service: form.service,
-          date:    form.date,
-          notes:   form.notes.trim(),
+          name:     form.name.trim(),
+          email:    form.email.trim(),
+          phone:    form.phone.trim(),
+          address:  form.address.trim(),
+          service:  form.service,
+          quantity: qty,
+          date:     form.date,
+          notes:    form.notes.trim(),
         }),
       });
 
       let data;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error("Server returned an unexpected response. Please try again.");
-      }
+      try { data = await response.json(); }
+      catch { throw new Error("Server returned an unexpected response. Please try again."); }
 
       if (response.ok) {
         setSubmitted(true);
@@ -172,10 +205,7 @@ export default function Laundary() {
       }
     } catch (err) {
       if (err.name === "TypeError" && err.message.includes("fetch")) {
-        showToast(
-          "Cannot reach server. Check if your backend is running on " + API_BASE_URL,
-          "error"
-        );
+        showToast(`Cannot reach server. Check if your backend is running on ${API_BASE_URL}`, "error");
       } else {
         showToast(err.message || "Something went wrong. Please try again.", "error");
       }
@@ -192,18 +222,20 @@ export default function Laundary() {
   };
 
   const resetForm = () => {
-    setForm({ name: "", email: "", phone: "", address: "", service: "", date: "", notes: "" });
+    setForm({ name: "", email: "", phone: "", address: "", service: "", quantity: "", date: "", notes: "" });
     setSubmitted(false);
   };
+
+  const unit = getUnit(form.service);
 
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
       <style>{fontStyle}</style>
 
-      {/* ── TOAST ── */}
+      {/* TOAST */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* ── NAVBAR ── */}
+      {/* NAVBAR */}
       <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-sky-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -219,11 +251,21 @@ export default function Laundary() {
             ))}
           </div>
           <div className="hidden md:flex items-center gap-3">
+            {/* Backend check button */}
+            <button
+              onClick={handleCheckBackend}
+              title="Check backend connectivity"
+              className={`text-xs font-semibold px-3 py-2 rounded-full border transition-all cursor-pointer ${
+                backendStatus === "ok"   ? "bg-green-50 border-green-200 text-green-600" :
+                backendStatus === "down" ? "bg-red-50 border-red-200 text-red-500" :
+                "bg-gray-50 border-gray-200 text-gray-500 hover:border-sky-300 hover:text-sky-600"
+              }`}>
+              {backendStatus === "ok" ? "🟢 Backend OK" : backendStatus === "down" ? "🔴 Backend Down" : "🔍 Check Backend"}
+            </button>
             <a href="tel:+917876193566" className="text-sm text-gray-600 hover:text-sky-600 transition-colors">📞 +91 78761 93566</a>
             <button onClick={() => scrollTo("contact")} className="bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold px-5 py-2 rounded-full transition-all hover:shadow-lg hover:shadow-sky-200 cursor-pointer">
               Book Pickup
             </button>
-            {/* ── LOGOUT BUTTON ── */}
             <button
               onClick={logout}
               className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-red-500 border border-gray-200 hover:border-red-200 hover:bg-red-50 px-4 py-2 rounded-full transition-all cursor-pointer"
@@ -248,7 +290,6 @@ export default function Laundary() {
               </button>
             ))}
             <button onClick={() => scrollTo("contact")} className="bg-sky-500 text-white text-sm font-semibold px-5 py-2 rounded-full w-full">Book Pickup</button>
-            {/* ── MOBILE LOGOUT ── */}
             <button
               onClick={logout}
               className="flex items-center justify-center gap-2 text-sm font-semibold text-red-500 border border-red-200 bg-red-50 px-5 py-2 rounded-full w-full transition-colors"
@@ -262,7 +303,7 @@ export default function Laundary() {
         )}
       </nav>
 
-      {/* ── HERO ── */}
+      {/* HERO */}
       <section id="home" className="pt-16 min-h-screen flex items-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-sky-50 via-white to-blue-50"></div>
         <div className="absolute top-20 right-10 w-72 h-72 bg-sky-200/30 rounded-full blur-3xl"></div>
@@ -330,7 +371,7 @@ export default function Laundary() {
         </div>
       </section>
 
-      {/* ── SERVICES ── */}
+      {/* SERVICES */}
       <section id="services" className="py-24 bg-blue-200">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
@@ -358,15 +399,14 @@ export default function Laundary() {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
+      {/* HOW IT WORKS */}
       <section id="how-it-works" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <p className="text-sky-500 font-semibold text-sm uppercase tracking-widest mb-3">Simple Process</p>
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-gray-900">How It Works</h2>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
-            <div className="hidden lg:block absolute top-8 left-1/4 right-1/4 h-0.5 bg-gradient-to-r"></div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {STEPS.map((step, i) => (
               <div key={i} className="text-center group">
                 <div className="w-16 h-16 bg-gradient-to-br from-sky-100 to-sky-200 group-hover:from-sky-400 group-hover:to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 transition-all duration-300">
@@ -380,7 +420,7 @@ export default function Laundary() {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
+      {/* PRICING */}
       <section id="pricing" className="py-24 bg-gradient-to-br from-sky-500 to-blue-700 text-white relative overflow-hidden">
         <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full translate-x-1/3 translate-y-1/3"></div>
@@ -408,7 +448,7 @@ export default function Laundary() {
         </div>
       </section>
 
-      {/* ── BOOKING FORM ── */}
+      {/* BOOKING FORM */}
       <section id="contact" className="py-24 bg-blue-100">
         <div className="max-w-2xl mx-auto px-6">
           <div className="text-center mb-10">
@@ -429,6 +469,9 @@ export default function Laundary() {
                 <div className="text-sm text-gray-400 bg-white rounded-xl px-4 py-3 inline-block">
                   ✉️ Confirmation sent to <span className="font-semibold text-gray-700">{form.email}</span>
                 </div>
+                <div className="text-sm text-gray-400 bg-white rounded-xl px-4 py-3 inline-block">
+                  🧺 {form.service} · {form.quantity} {unit}
+                </div>
               </div>
               <button onClick={resetForm} className="mt-6 block mx-auto bg-sky-500 text-white font-semibold px-6 py-3 rounded-xl hover:bg-sky-600 transition-colors cursor-pointer">
                 Book Another
@@ -436,6 +479,7 @@ export default function Laundary() {
             </div>
           ) : (
             <div className="bg-gray-100 rounded-3xl p-8 border border-gray-100">
+
               {/* Row 1: Name + Email */}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
@@ -502,7 +546,7 @@ export default function Laundary() {
                   </label>
                   <select
                     value={form.service}
-                    onChange={e => setField("service", e.target.value)}
+                    onChange={e => { setField("service", e.target.value); setField("quantity", ""); }}
                     disabled={loading}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none bg-white text-sm transition-all disabled:opacity-50"
                   >
@@ -523,7 +567,50 @@ export default function Laundary() {
                 </div>
               </div>
 
-              {/* Row 5: Notes */}
+              {/* Row 5: Quantity */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Quantity{" "}
+                  <span className="text-red-400">*</span>
+                  {form.service && (
+                    <span className="ml-1.5 text-xs text-gray-400 font-normal">
+                      ({unit === "kg" ? "in kilograms" : unit === "pairs" ? "number of pairs" : "number of pieces"})
+                    </span>
+                  )}
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    step={unit === "kg" ? "0.5" : "1"}
+                    placeholder={unit === "kg" ? "e.g. 3" : "e.g. 5"}
+                    value={form.quantity}
+                    onChange={e => setField("quantity", e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none bg-white text-sm transition-all disabled:opacity-50"
+                  />
+                  {form.service && (
+                    <span className="shrink-0 text-sm font-semibold text-sky-600 bg-sky-50 border border-sky-100 px-4 py-3 rounded-xl">
+                      {unit}
+                    </span>
+                  )}
+                </div>
+                {/* Live price estimate */}
+                {form.quantity && form.service && (() => {
+                  const svc = SERVICES.find(s => s.title === form.service);
+                  if (!svc || svc.price === "Custom") return null;
+                  const priceNum = parseFloat(svc.price.replace(/[^0-9.]/g,""));
+                  const qty = parseFloat(form.quantity);
+                  if (!priceNum || !qty || qty <= 0) return null;
+                  return (
+                    <p className="mt-2 text-xs text-sky-600 font-medium bg-sky-50 rounded-lg px-3 py-2 inline-block">
+                      💡 Estimated cost: ₹{(priceNum * qty).toFixed(0)} ({svc.price} × {qty} {unit})
+                    </p>
+                  );
+                })()}
+              </div>
+
+              {/* Row 6: Notes */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Special Instructions</label>
                 <textarea
@@ -536,7 +623,7 @@ export default function Laundary() {
                 />
               </div>
 
-              {/* Submit Button */}
+              {/* Submit */}
               <button
                 onClick={handleOrder}
                 disabled={!isFormValid || loading}
@@ -559,7 +646,7 @@ export default function Laundary() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
+      {/* FOOTER */}
       <footer className="bg-gray-900 text-gray-400 py-16">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
