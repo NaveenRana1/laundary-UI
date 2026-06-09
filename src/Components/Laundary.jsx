@@ -26,10 +26,7 @@ const fontStyle = `
 `;
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-// NOTE: The URL below is your deployed Render backend (kept exactly as-is).
-// If you ever get "Cannot reach server" errors, double-check this matches
-// the service name in your Render dashboard.
-const API_BASE_URL = "https://laundary-beckend.onrender.com";
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 const SERVICES = [
   { icon: "🧺", title: "Wash & Fold",     desc: "Fresh, fluffy laundry folded and ready. Per-kg pricing, same-day available.", price: "₹60/kg",    unit: "kg",   color: "from-sky-400 to-blue-500"      },
@@ -48,13 +45,26 @@ const STEPS = [
 ];
 
 const PLANS = [
-  { plan: "Basic",    price: "₹299", desc: "Up to 5kg laundry. Wash & fold. 48hr delivery.",                             highlight: false },
-  { plan: "Standard", price: "₹549", desc: "Up to 10kg. Wash, fold & iron. 24hr delivery. Free pickup.",                 highlight: true  },
-  { plan: "Premium",  price: "₹999", desc: "Unlimited pieces. All services. Same-day express. Priority support.",        highlight: false },
+  { plan: "Basic",    price: "₹299", desc: "Up to 5kg laundry. Wash & fold. 48hr delivery.",                      highlight: false },
+  { plan: "Standard", price: "₹549", desc: "Up to 10kg. Wash, fold & iron. 24hr delivery. Free pickup.",          highlight: true  },
+  { plan: "Premium",  price: "₹999", desc: "Unlimited pieces. All services. Same-day express. Priority support.", highlight: false },
 ];
 
-// ── Helper: get unit label for selected service ───────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 const getUnit = (serviceTitle) => SERVICES.find(s => s.title === serviceTitle)?.unit || "pcs";
+
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const EMPTY_FORM = {
+  name:     "",
+  email:    "",
+  phone:    "",
+  address:  "",
+  service:  "",
+  quantity: "",
+  date:     "",
+  note:     "",   // ✅ single canonical key — matches backend field
+};
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 function Toast({ message, type, onClose }) {
@@ -99,24 +109,15 @@ async function checkBackend() {
   }
 }
 
-export default function Laundary() {
+// ═════════════════════════════════════════════════════════════════════════════
+export default function Laundry() {
   const [activeNav,     setActiveNav]     = useState("home");
   const [menuOpen,      setMenuOpen]      = useState(false);
   const [submitted,     setSubmitted]     = useState(false);
   const [loading,       setLoading]       = useState(false);
   const [backendStatus, setBackendStatus] = useState(null); // null | "ok" | "down"
   const [toast,         setToast]         = useState(null);
-
-  const [form, setForm] = useState({
-    name:     "",
-    email:    "",
-    phone:    "",
-    address:  "",
-    service:  "",
-    quantity: "",
-    date:     "",
-    notes:    "",
-  });
+  const [form,          setForm]          = useState(EMPTY_FORM);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = (message, type = "error") => {
@@ -126,8 +127,6 @@ export default function Laundary() {
 
   const setField = (key, value) => setForm(f => ({ ...f, [key]: value }));
 
-  const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
   const isFormValid =
     form.name.trim() &&
     form.email.trim() &&
@@ -135,7 +134,9 @@ export default function Laundary() {
     form.service &&
     form.quantity;
 
-  // ── Backend URL checker ───────────────────────────────────────────────────
+  const unit = getUnit(form.service);
+
+  // ── Backend check ─────────────────────────────────────────────────────────
   const handleCheckBackend = async () => {
     setBackendStatus(null);
     showToast("Checking backend connection…", "info");
@@ -171,19 +172,23 @@ export default function Laundary() {
     }
 
     setLoading(true);
+    const token = localStorage.getItem("token");
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name:     form.name.trim(),
-          email:    form.email.trim(),
-          phone:    form.phone.trim(),
-          address:  form.address.trim(),
-          service:  form.service,
-          quantity: qty,
-          date:     form.date,
-          notes:    form.notes.trim(),
+      const response = await fetch(`${API_BASE_URL}/booking`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    name: form.name.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim(),
+    address: form.address.trim(),
+    service: form.service,
+    quantity: qty,
+    date: form.date,
+    note: form.note.trim(),  // ✅ matches EMPTY_FORM key and backend field
         }),
       });
 
@@ -222,12 +227,11 @@ export default function Laundary() {
   };
 
   const resetForm = () => {
-    setForm({ name: "", email: "", phone: "", address: "", service: "", quantity: "", date: "", notes: "" });
+    setForm(EMPTY_FORM);   // ✅ always resets from the single source of truth
     setSubmitted(false);
   };
 
-  const unit = getUnit(form.service);
-
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
       <style>{fontStyle}</style>
@@ -251,17 +255,7 @@ export default function Laundary() {
             ))}
           </div>
           <div className="hidden md:flex items-center gap-3">
-            {/* Backend check button */}
-            <button
-              onClick={handleCheckBackend}
-              title="Check backend connectivity"
-              className={`text-xs font-semibold px-3 py-2 rounded-full border transition-all cursor-pointer ${
-                backendStatus === "ok"   ? "bg-green-50 border-green-200 text-green-600" :
-                backendStatus === "down" ? "bg-red-50 border-red-200 text-red-500" :
-                "bg-gray-50 border-gray-200 text-gray-500 hover:border-sky-300 hover:text-sky-600"
-              }`}>
-              {backendStatus === "ok" ? "🟢 Backend OK" : backendStatus === "down" ? "🔴 Backend Down" : "🔍 Check Backend"}
-            </button>
+            
             <a href="tel:+917876193566" className="text-sm text-gray-600 hover:text-sky-600 transition-colors">📞 +91 78761 93566</a>
             <button onClick={() => scrollTo("contact")} className="bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold px-5 py-2 rounded-full transition-all hover:shadow-lg hover:shadow-sky-200 cursor-pointer">
               Book Pickup
@@ -570,8 +564,7 @@ export default function Laundary() {
               {/* Row 5: Quantity */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Quantity{" "}
-                  <span className="text-red-400">*</span>
+                  Quantity <span className="text-red-400">*</span>
                   {form.service && (
                     <span className="ml-1.5 text-xs text-gray-400 font-normal">
                       ({unit === "kg" ? "in kilograms" : unit === "pairs" ? "number of pairs" : "number of pieces"})
@@ -616,8 +609,8 @@ export default function Laundary() {
                 <textarea
                   rows={3}
                   placeholder="Any specific requirements, stains, or allergies..."
-                  value={form.notes}
-                  onChange={e => setField("notes", e.target.value)}
+                  value={form.note}                              // ✅ was form.notes
+                  onChange={e => setField("note", e.target.value)} // ✅ was "notes"
                   disabled={loading}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none bg-white text-sm transition-all resize-none disabled:opacity-50"
                 />
