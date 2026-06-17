@@ -324,7 +324,11 @@ export default function Login() {
       const res = await API.post("/login", {
         email:    form.email.trim().toLowerCase(),
         password: form.password,
-      });
+      },
+      {
+        withCredentials:true,
+      }
+    );
       localStorage.setItem("token", res.data.access_token);
       navigate("/dashboard");
     } catch (err) {
