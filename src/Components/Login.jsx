@@ -1,5 +1,5 @@
 import { useState } from "react";
-import API from "./api";
+import API, { setAccessToken } from "./api";   // ← use memory store, not localStorage
 import { useNavigate } from "react-router-dom";
 
 const styles = `
@@ -297,20 +297,17 @@ const styles = `
 export default function Login() {
   const navigate = useNavigate();
 
-  // ── FIX 1: form uses "email" not "name" / "username" ──
-  const [form, setForm]       = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ── FIX 2: reads e.target.name correctly for both fields ──
   const handleChange = (e) => {
     setError("");
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const login = async () => {
-    // ── FIX 3: validate email + password, not "name" ──
     if (!form.email.trim() || !form.password) {
       setError("Please enter your email and password.");
       return;
@@ -320,23 +317,25 @@ export default function Login() {
     setError("");
 
     try {
-      // ── FIX 4: send { email, password } matching the backend /login schema ──
       const res = await API.post("/login", {
-        email:    form.email.trim().toLowerCase(),
+        email: form.email.trim().toLowerCase(),
         password: form.password,
-      },
-      {
-        withCredentials:true,
-      }
-    );
-      localStorage.setItem("token", res.data.access_token);
+      });
+
+      /**
+       * Store access token in memory only (never localStorage).
+       * The refresh token is an HttpOnly cookie — the browser handles it
+       * automatically. setAccessToken() writes to window.__accessToken.
+       */
+      setAccessToken(res.data.access_token);
+
       navigate("/dashboard");
     } catch (err) {
       const detail = err?.response?.data?.detail;
       setError(
         typeof detail === "string"
           ? detail
-          : "Invalid email or password. Please try again."
+          : "Invalid email or password. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -371,9 +370,10 @@ export default function Login() {
 
           {error && <div className="lw-error">{error}</div>}
 
-          {/* ── FIX 5: name="email", value=form.email, correct icon ── */}
           <div className="lw-field">
-            <label className="lw-label" htmlFor="email">Email</label>
+            <label className="lw-label" htmlFor="email">
+              Email
+            </label>
             <div className="lw-input-wrap">
               <i className="ti ti-mail" aria-hidden="true" />
               <input
@@ -389,9 +389,10 @@ export default function Login() {
             </div>
           </div>
 
-          {/* ── FIX 6: show/hide password toggle added ── */}
           <div className="lw-field">
-            <label className="lw-label" htmlFor="password">Password</label>
+            <label className="lw-label" htmlFor="password">
+              Password
+            </label>
             <div className="lw-input-wrap">
               <i className="ti ti-lock" aria-hidden="true" />
               <input
@@ -419,7 +420,9 @@ export default function Login() {
             <a onClick={() => navigate("/forgot-password")}>Forgot password?</a>
           </div>
 
-          <div className="lw-divider"><span>or</span></div>
+          <div className="lw-divider">
+            <span>or</span>
+          </div>
 
           <button className="lw-btn" onClick={login} disabled={loading}>
             <i className="ti ti-arrow-right" aria-hidden="true" />
@@ -433,7 +436,8 @@ export default function Login() {
 
           <div className="lw-badges">
             <span className="lw-badge">
-              <i className="ti ti-shield-check" aria-hidden="true" /> Secure login
+              <i className="ti ti-shield-check" aria-hidden="true" /> Secure
+              login
             </span>
             <span className="lw-badge">
               <i className="ti ti-clock" aria-hidden="true" /> 24hr pickup
