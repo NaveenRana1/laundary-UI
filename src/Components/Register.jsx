@@ -445,7 +445,7 @@ export default function Register() {
         password: form.password,
       });
       setSuccess("Account created! Redirecting you to login…");
-      setTimeout(() => navigate("/"), 1500);
+      setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       const msg = err?.response?.data?.detail || "";
       if (msg.toLowerCase().includes("email")) {
