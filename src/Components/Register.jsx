@@ -608,7 +608,7 @@ export default function Register() {
 
           <p className="rw-login">
             Already have an account?{" "}
-            <a onClick={() => navigate("/")}>Sign in</a>
+            <a onClick={() => navigate("/login")}>Sign in</a>
           </p>
 
           {/* Perks */}
