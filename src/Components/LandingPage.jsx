@@ -52,14 +52,14 @@ const LandingPage = () => {
 
           <div className="flex flex-wrap justify-center gap-4">
             <button
-              onClick={() => navigate("/register")}
+            
               className="px-6 py-3 rounded-xl bg-white text-black text-sm font-semibold shadow hover:bg-gray-100 transition flex items-center gap-2 cursor-pointer"
             >
               Get started — it’s free
               <span className="text-lg">↗</span>
             </button>
             <button
-              onClick={() => navigate("/how-it-works")}
+            
               className="px-6 py-3 rounded-xl border border-gray-500 text-sm font-semibold text-white hover:bg-white/5 transition cursor-pointer"
             >
               See how it works
