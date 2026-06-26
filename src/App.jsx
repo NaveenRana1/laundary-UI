@@ -9,13 +9,14 @@ import Register from "./Components/Register";
 
 import Laundary from "./Components/Laundary";
 import  {ForgotPassword,ResetPassword}  from "./Components/ForgotPassword";
+import LandingPage from "./Components/LandingPage";
 
 
 function App() {
   return (
   <BrowserRouter>
       <Routes>
-        <Route path="/"           element={<Login />} />
+        <Route path="/"           element={<LandingPage />} />
         <Route path="/register"        element={<Register />} />
         <Route path="/dashboard"       element={<Laundary />} />
         <Route path="/forgot-password" element={<ForgotPassword/>} />
